@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% block title %}
+    detail
+{% endblock title %}
+{% block content %}
+
+<div class="shadow-lg rounded container mt-3 mb-3">
+    <div class="row" id="main-content">
+        <div class="col-3 " id="sidebar" class="sidebar" class="main">
+            <div class="sidebar__inner ml-3">
+                <h4 class="mt-2"><strong>HOME</strong></h4>
+                <hr class="mr-3">
+                <div style="color:#FFA500;">
+                    {% for particle in particle_list %}
+                        <p onclick="findSubGetDetail({{ particle.id }})" id="{{ particle.id }}"><a href="#">
+                            {{ particle.title }}
+                        </a></p>
+                    {% endfor %}
+                    <p id="particle"></p>
+                </div>
+            </div>
+        </div>
+        <div class="col-9" id="content">
+            <h1 class="mt-4 mb-4" id="articleTitle"></h1>
+                <div class="forHome"><h1>{{ article.title }}</h1></div>
+            <div class="breadcrumb">
+                <span>&nbsp;{{ article.author }}&emsp;|&emsp;
+                    <span id="created"></span>
+                <span class="forHome">{{ article.created|date:'Y-m-d' }}</span>
+                </span>
+            </div>
+            <div class="col-12" id="botsub">
+                {% autoescape off %}
+                <p id="articleBody"></p>
+                {% endautoescape %}
+                <div class="forHome">{{ article.body|safe }}</div>
+                
+            </div>
+        </div>
+            
+    </div>
+
+</div>
+
+<style>
+    .toc ul li a {
+            color:gray;
+        }
+    #sidebar {
+        min-height: 1000px;
+        will-change: min-height;
+    }
+    .sidebar{
+        will-change: min-height;
+        topSpacing: 60,
+        bottomSpacing: 60
+    }
+    .sidebar__inner{
+        transform: translate(0, 0); /* For browsers don't support translate3d. */
+        transform: translate3d(0, 0, 0);
+        will-change: position, transform;
+    }
+    
+</style>
+
+{% endblock content %}
+
+{% block script %}
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/css-element-queries/1.2.3/ResizeSensor.min.js"></script>
+<script src="https://cdn.bootcdn.net/ajax/libs/sticky-sidebar/3.3.1/jquery.sticky-sidebar.min.js"></script>
+
+<script type="text/javascript">
+    $('#sidebar').stickySidebar({
+        containerSelector: '#main-content',
+        innerWrapperSelector: '.sidebar__inner',
+        topSpacing: 20,
+        bottomSpacing: 20,
+    });
+
+</script>
+
+<script type="text/javascript">
+
+function updateStickySidebar(){
+    var stickySidebar = new StickySidebar('.sidebar');
+    stickySidebar.updateSticky();
+}
+
+function findSubGetDetail(id){
+    $("div").remove(".forHome");
+    $("span").remove(".forHome");
+    findsub(id);
+    getDetail(id);
+}
+
+function subGetDetail(id){
+    $("p").remove(".4del");
+    getDetail(id);
+
+}
+
+function botsubChange(id,pid){
+    subGetDetail(id);
+    $("."+pid+"sub").toggle();
+
+}
+
+var json;
+var djson;
+function findsub(id) {
+    $.ajax({
+            type:"post",
+            dataType:"text",
+            data:{
+                csrfmiddlewaretoken:'{{ csrf_token }}',
+                "id":id
+            },
+            url:"{% url 'article:ajax_article_list'%}",
+            success:function(callback){
+                json =  JSON.parse(callback);
+                gosub(id,json);
+            },
+        })
+}
+
+function gosub(id, json) {
+
+    if($("."+id+"sub").length <= 0) {
+        for (var i = json.length - 1; i >= 0; i--) {
+            $("#"+id).after('<p onclick="subGetDetail('+json[i]["pk"]+')" class="'+id+'sub" id="'+json[i]["pk"]+'" >---'+json[i]["fields"]["title"]+'</p>');
+        };
+
+    }else{
+        //$("p").remove("."+id+"sub");
+        //$("."+id+"sub").hide();
+        $("."+id+"sub").toggle();
+    }
+
+    if($("."+id+"botsub").length <= 0){
+        $("p").remove(".4del");
+        for (var i = json.length - 1; i >= 0; i--) {
+            $("#botsub").after('<p class = "4del" onclick="botsubChange('+json[i]["pk"]+','+json[i]["fields"]["particle"]+')" class="'+id+'botsub" style="color:#007BFF">'+json[i]["fields"]["title"]+'</p>');
+        };
+    }
+
+}
+
+function getDetail(id){
+
+    $.ajax({
+            type:"post",
+            dataType:"text",
+            data:{
+                csrfmiddlewaretoken:'{{ csrf_token }}',
+                "id":id
+            },
+            url:"{% url 'article:ajax_article_detail'%}",
+            success:function(callback){
+                djson =  JSON.parse(callback);
+                goDetail(id,djson);
+            },
+        })
+
+}
+
+function goDetail(id,djson){
+    document.getElementById("articleTitle").innerText = djson[0]["fields"]["title"];
+    
+    var d = new Date(djson[0]["fields"]["created"]),
+    month = '' + (d.getMonth() + 1),
+    day = '' + d.getDate(),
+    year = d.getFullYear();
+
+    document.getElementById("created").innerText = year+"-"+month+"-"+day;
+
+    articlebody = djson[0]["fields"]["body"];
+    document.getElementById("articleBody").innerHTML = articlebody;
+
+    $("#"+id).nextAll().css({color: "#FFA500"});
+    $("#"+id).prevAll().css({color: "#FFA500"});
+    $("#"+id).css({color: "#272727"});
+
+    updateStickySidebar();
+}
+
+
+</script>
+
+{% endblock script %}
